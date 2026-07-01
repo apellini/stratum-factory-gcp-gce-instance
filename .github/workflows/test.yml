@@ -1,0 +1,69 @@
+name: test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches-ignore: [main]
+
+jobs:
+  terratest:
+    name: Terratest unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.12.3"
+
+      - name: Verify OpenTofu
+        run: tofu version
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install Go dependencies
+        working-directory: tests
+        run: go mod tidy
+
+      - name: Run Terratest
+        working-directory: tests
+        run: |
+          echo "## Terratest Unit Test Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          go test -v -timeout 10m ./... 2>&1 | tee test_output.txt
+
+          echo "| Test | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          grep -E "^--- (PASS|FAIL)" test_output.txt | while read -r line; do
+            if echo "$line" | grep -q "^--- PASS"; then
+              name=$(echo "$line" | awk '{print $3}' | sed 's/(.*//')
+              echo "| $name | ✅ PASS |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              name=$(echo "$line" | awk '{print $3}' | sed 's/(.*//')
+              echo "| $name | ❌ FAIL |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          if grep -q "^--- FAIL" test_output.txt || grep -q "^FAIL" test_output.txt; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "❌ One or more tests failed. See logs above." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          else
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "✅ All tests passed." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terratest-output
+          path: tests/test_output.txt
+          retention-days: 30

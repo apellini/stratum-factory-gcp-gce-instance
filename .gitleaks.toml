@@ -1,0 +1,10 @@
+title = "stratum-factory-gcp-gce-instance gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "CI negative-test workflow contains intentional fake secrets to verify the scanner works."
+paths = [
+  '''.github/workflows/secret-scan.yml''',
+]
