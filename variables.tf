@@ -79,6 +79,11 @@ variable "instances" {
       - attached_disks  (optional, default []) List of {name, size_gb, type (default pd-balanced)}.
                         Creates one google_compute_disk per entry and attaches it to the instance.
 
+    IP forwarding:
+      - can_ip_forward  (optional, default false) Enables IP forwarding at the hypervisor level.
+                        Required when the VM acts as a NAT gateway or IP router (D-INFRA-11).
+                        GCP drops forwarded packets at the hypervisor unless this is true.
+
     Metadata / bootstrap:
       - metadata                (optional, default {})   Instance metadata map (e.g. ssh-keys). Never hardcode secrets.
       - metadata_startup_script (optional, default null) Startup script content. Bootstrap logic lives in external artifacts (HLD).
@@ -106,6 +111,8 @@ variable "instances" {
     boot_disk_type    = optional(string, "pd-balanced")
 
     network_tags = optional(list(string), [])
+
+    can_ip_forward = optional(bool, false)
 
     service_account_email  = optional(string, null)
     service_account_scopes = optional(list(string), ["cloud-platform"])

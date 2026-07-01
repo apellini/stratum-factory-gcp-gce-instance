@@ -64,6 +64,7 @@ resource "google_compute_instance" "vm" {
   description  = "STRATUM ${var.environment} ${each.value.name} node — managed by OpenTofu (stratum-factory-gcp-gce-instance)"
 
   deletion_protection = false
+  can_ip_forward      = each.value.can_ip_forward
 
   # ── Boot disk ────────────────────────────────────────────────────────────────
   boot_disk {

@@ -15,32 +15,39 @@ environment node roles (HLD G-COMPUTE):
 | Containerlab | `n2d-highmem-8` | spot/preemptible | nested-virt (D-ENV-22) |
 
 The module supports multi-NIC instances (each `network_interfaces` entry = one GCP NIC, bound
-to a distinct VPC). The dev wrapper uses one NIC per node (single shared subnet `10.100.0.0/24`).
+to a distinct VPC) and IP forwarding (`can_ip_forward`) for NAT-gateway / router use cases.
 
 ## Usage
 
 ```hcl
 module "dev_gce" {
-  source = "git::https://github.com/apellini/stratum-factory-gcp-gce-instance.git?ref=v0.1.0"
+  source = "git::https://github.com/apellini/stratum-factory-gcp-gce-instance.git?ref=v0.2.0"
 
   environment = "dev"
   project_id  = "stratum-dev-sandbox"
   name_prefix = "stratum-dev"
 
   instances = [
-    # ── bastion / DNS / VPN ─────────────────────────────────────────────────────
+    # ── bastion / DNS / VPN — dual-NIC NAT gateway (D-INFRA-11) ─────────────────
     {
-      name         = "bastion"
-      machine_type = "e2-micro"
-      zone         = "europe-west1-b"
-      boot_image   = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+      name           = "bastion"
+      machine_type   = "e2-micro"
+      zone           = "europe-west1-b"
+      boot_image     = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
       boot_disk_size_gb = 10
-      network_tags = ["bastion"]
-      network_interfaces = [{
-        subnetwork         = module.dev_subnet.subnet_self_link
-        assign_external_ip = true
-        external_ip        = module.dev_address.address   # reserved static IP
-      }]
+      can_ip_forward = true          # required for iptables MASQUERADE / NAT
+      network_tags   = ["bastion"]
+      network_interfaces = [
+        {
+          subnetwork         = module.dev_subnet_ext.subnet_self_link  # nic0 — external VPC
+          assign_external_ip = true
+          external_ip        = module.dev_address.address              # reserved static IP
+        },
+        {
+          subnetwork = module.dev_subnet_int.subnet_self_link           # nic1 — internal VPC
+          network_ip = "10.100.0.2"                                     # static; matches route next_hop_ip
+        },
+      ]
     },
     # ── k3s node ────────────────────────────────────────────────────────────────
     {
@@ -99,6 +106,7 @@ module "dev_gce" {
 | `boot_disk_size_gb` | `number` | `20` | `>= 10` | Boot disk size in GB |
 | `boot_disk_type` | `string` | `pd-balanced` | `pd-balanced`, `pd-ssd`, `pd-standard` | Boot disk type (D-ENV-12: prefer pd-balanced) |
 | `network_tags` | `list(string)` | `[]` | — | Network tags (drive firewall rule targeting) |
+| `can_ip_forward` | `bool` | `false` | — | Enables IP forwarding — required when the VM is a NAT gateway or router (D-INFRA-11) |
 | `service_account_email` | `string` | `null` | — | SA email to attach; `null` = no service_account block |
 | `service_account_scopes` | `list(string)` | `["cloud-platform"]` | — | OAuth2 scopes |
 | `attached_disks` | `list(object)` | `[]` | — | Extra data disks: `{name, size_gb, type}` |
@@ -137,5 +145,12 @@ module "dev_gce" {
 ## Release
 
 ```hcl
-source = "git::https://github.com/apellini/stratum-factory-gcp-gce-instance.git?ref=v0.1.0"
+source = "git::https://github.com/apellini/stratum-factory-gcp-gce-instance.git?ref=v0.2.0"
 ```
+
+### Changelog
+
+| Version | Changes |
+|---------|---------|
+| `v0.2.0` | Add `can_ip_forward` to instance contract (D-INFRA-11) |
+| `v0.1.0` | Initial release — multi-NIC, spot, nested-virt, attached disks |
