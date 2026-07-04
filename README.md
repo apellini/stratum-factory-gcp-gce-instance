@@ -21,7 +21,7 @@ to a distinct VPC) and IP forwarding (`can_ip_forward`) for NAT-gateway / router
 
 ```hcl
 module "dev_gce" {
-  source = "git::https://github.com/apellini/stratum-factory-gcp-gce-instance.git?ref=v0.2.0"
+  source = "git::https://github.com/apellini/stratum-factory-gcp-gce-instance.git?ref=v0.3.0"
 
   environment = "dev"
   project_id  = "stratum-dev-sandbox"
@@ -103,6 +103,7 @@ module "dev_gce" {
 | `network_interfaces` | `list(object)` | — | ≥1; valid subnetwork self-link | NIC definitions; nic0 = default route |
 | `spot` | `bool` | `false` | — | `true` = SPOT preemptible scheduling |
 | `enable_nested_virtualization` | `bool` | `false` | — | Enables nested-virt (N2/N2D/C2/C3 only — D-ENV-22) |
+| `enable_serial_console` | `bool` | `false` | — | Enables GCP serial console access (D-INFRA-23). Sets `serial-port-enable=true` (interactive login via `gcloud compute connect-to-serial-port`, requires ssh-key in `metadata`) and `serial-port-logging-enable=true` (boot/serial output in Cloud Logging + GCP Console "Serial port" tab) |
 | `boot_disk_size_gb` | `number` | `20` | `>= 10` | Boot disk size in GB |
 | `boot_disk_type` | `string` | `pd-balanced` | `pd-balanced`, `pd-ssd`, `pd-standard` | Boot disk type (D-ENV-12: prefer pd-balanced) |
 | `network_tags` | `list(string)` | `[]` | — | Network tags (drive firewall rule targeting) |
@@ -145,12 +146,13 @@ module "dev_gce" {
 ## Release
 
 ```hcl
-source = "git::https://github.com/apellini/stratum-factory-gcp-gce-instance.git?ref=v0.2.0"
+source = "git::https://github.com/apellini/stratum-factory-gcp-gce-instance.git?ref=v0.3.0"
 ```
 
 ### Changelog
 
 | Version | Changes |
 |---------|---------|
+| `v0.3.0` | Add `enable_serial_console` — sets `serial-port-enable` + `serial-port-logging-enable` metadata keys (D-INFRA-23) |
 | `v0.2.0` | Add `can_ip_forward` to instance contract (D-INFRA-11) |
 | `v0.1.0` | Initial release — multi-NIC, spot, nested-virt, attached disks |

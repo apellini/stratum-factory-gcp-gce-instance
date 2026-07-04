@@ -132,9 +132,16 @@ resource "google_compute_instance" "vm" {
   }
 
   # ── Metadata / startup script ─────────────────────────────────────────────────
-  # Pass-through inputs; bootstrap logic lives in external Helm/OpenTofu artifacts (HLD).
-  # ssh-keys entry lives in metadata map — never hardcoded.
-  metadata                = each.value.metadata
+  # Caller-supplied metadata is the base; serial-console keys are merged on top when
+  # enable_serial_console = true (D-INFRA-23). Caller keys always win for any other
+  # entry; ssh-keys entry lives in the caller map — never hardcoded here.
+  metadata = merge(
+    each.value.metadata,
+    each.value.enable_serial_console ? {
+      "serial-port-enable"         = "true"
+      "serial-port-logging-enable" = "true"
+    } : {}
+  )
   metadata_startup_script = each.value.metadata_startup_script
 
   # ── Labels ───────────────────────────────────────────────────────────────────

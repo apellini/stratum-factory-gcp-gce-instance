@@ -67,6 +67,14 @@ variable "instances" {
       - enable_nested_virtualization (optional, default false) Enables nested-virt via advanced_machine_features.
                                      Requires an N2/N2D/C2/C3 machine family (D-ENV-22).
 
+    Serial console access (D-INFRA-23):
+      - enable_serial_console (optional, default false) Injects two GCP metadata keys into the instance:
+                              "serial-port-enable" = "true"         → enables interactive login via
+                                  `gcloud compute connect-to-serial-port` (requires ssh-key in metadata).
+                              "serial-port-logging-enable" = "true" → streams boot/serial output to
+                                  Cloud Logging and the GCP Console "Serial port" tab.
+                              Merged on top of the caller-supplied metadata map; caller keys are preserved.
+
     Boot disk:
       - boot_disk_size_gb    (optional, default 20)          Must be >= 10.
       - boot_disk_type       (optional, default pd-balanced)  pd-balanced | pd-ssd | pd-standard (D-ENV-12: prefer pd-balanced).
@@ -106,6 +114,7 @@ variable "instances" {
 
     spot                         = optional(bool, false)
     enable_nested_virtualization = optional(bool, false)
+    enable_serial_console        = optional(bool, false)
 
     boot_disk_size_gb = optional(number, 20)
     boot_disk_type    = optional(string, "pd-balanced")
