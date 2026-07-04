@@ -295,6 +295,38 @@ func TestGceInstanceRejectsInvalidSubnetworkSelfLink(t *testing.T) {
 	printReport(t, map[string]string{"TestGceInstanceRejectsInvalidSubnetworkSelfLink": result})
 }
 
+// ── Serial console ────────────────────────────────────────────────────────────
+
+// TestGceInstanceSerialConsoleEnabled confirms that enable_serial_console = true
+// is accepted by the module (plan succeeds) — regression guard for D-INFRA-23.
+// Verifies that the metadata merge in main.tf does not introduce a validation error.
+func TestGceInstanceSerialConsoleEnabled(t *testing.T) {
+	t.Parallel()
+
+	vars := validVars()
+	vars["instances"] = []map[string]interface{}{
+		{
+			"name":                   "bastion",
+			"machine_type":           "e2-micro",
+			"zone":                   "europe-west1-b",
+			"boot_image":             "ubuntu-os-cloud/ubuntu-2404-lts-amd64",
+			"enable_serial_console":  true,
+			"network_interfaces":     []map[string]interface{}{validNic()},
+		},
+	}
+	opts := tofuOptions(t, vars)
+
+	terraform.Init(t, opts)
+	_, err := terraform.InitAndPlanE(t, opts)
+
+	result := "PASS"
+	if err != nil {
+		result = "FAIL"
+		t.Errorf("expected plan to succeed with enable_serial_console=true, got error: %v", err)
+	}
+	printReport(t, map[string]string{"TestGceInstanceSerialConsoleEnabled": result})
+}
+
 // ── OpenTofu binary enforcement ───────────────────────────────────────────────
 
 // TestNoTerraformBinary confirms that no .tf file references the 'terraform' binary,
