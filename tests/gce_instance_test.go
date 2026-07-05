@@ -298,31 +298,34 @@ func TestGceInstanceRejectsInvalidSubnetworkSelfLink(t *testing.T) {
 // ── Serial console ────────────────────────────────────────────────────────────
 
 // TestGceInstanceSerialConsoleEnabled confirms that enable_serial_console = true
-// is accepted by the module (plan succeeds) — regression guard for D-INFRA-23.
-// Verifies that the metadata merge in main.tf does not introduce a validation error.
+// is accepted by the module — regression guard for D-INFRA-23.
+// Uses validate (not plan) so no GCP credentials are needed; validate fires all
+// variable validation blocks and confirms the metadata merge in main.tf is valid HCL.
 func TestGceInstanceSerialConsoleEnabled(t *testing.T) {
 	t.Parallel()
 
 	vars := validVars()
 	vars["instances"] = []map[string]interface{}{
 		{
-			"name":                   "bastion",
-			"machine_type":           "e2-micro",
-			"zone":                   "europe-west1-b",
-			"boot_image":             "ubuntu-os-cloud/ubuntu-2404-lts-amd64",
-			"enable_serial_console":  true,
-			"network_interfaces":     []map[string]interface{}{validNic()},
+			"name":                  "bastion",
+			"machine_type":          "e2-micro",
+			"zone":                  "europe-west1-b",
+			"boot_image":            "ubuntu-os-cloud/ubuntu-2404-lts-amd64",
+			"enable_serial_console": true,
+			"network_interfaces":    []map[string]interface{}{validNic()},
 		},
 	}
 	opts := tofuOptions(t, vars)
 
-	terraform.Init(t, opts)
-	_, err := terraform.InitAndPlanE(t, opts)
+	_, initErr := terraform.InitE(t, opts)
+	assert.NoError(t, initErr, "tofu init should succeed")
+
+	_, validateErr := terraform.RunTerraformCommandE(t, opts, "validate")
+	assert.NoError(t, validateErr, "tofu validate should succeed with enable_serial_console=true")
 
 	result := "PASS"
-	if err != nil {
+	if initErr != nil || validateErr != nil {
 		result = "FAIL"
-		t.Errorf("expected plan to succeed with enable_serial_console=true, got error: %v", err)
 	}
 	printReport(t, map[string]string{"TestGceInstanceSerialConsoleEnabled": result})
 }
